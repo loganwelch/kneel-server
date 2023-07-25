@@ -1,36 +1,34 @@
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from views import get_all_metals, get_single_metal, create_metal, delete_metal, update_metal, get_all_sizes, get_single_size, create_size, delete_size, update_size, get_all_styles, get_single_style, create_style, delete_style, update_style, get_all_orders, get_single_order, create_order, delete_order, update_order
-
+from urllib.parse import urlparse, parse_qs
 
 class HandleRequests(BaseHTTPRequestHandler):
     """Controls the functionality of any GET, PUT, POST, DELETE requests to the server
     """
 
     def parse_url(self, path):
-        # Just like splitting a string in JavaScript. If the
-        # path is "/animals/1", the resulting list will
-        # have "" at index 0, "animals" at index 1, and "1"
-        # at index 2.
-        path_params = path.split("/")
+        """Parse the url into the resource and id"""
+        parsed_url = urlparse(path)
+        path_params = parsed_url.path.split('/')  # ['', 'animals', 1]
         resource = path_params[1]
-        id = None
 
-        # Try to get the item at index 2
+        if parsed_url.query:
+            query = parse_qs(parsed_url.query)
+            return (resource, query)
+
+        pk = None
         try:
-            # Convert the string "1" to the integer 1
-            # This is the new parseInt()
-            id = int(path_params[2])
-        except IndexError:
-            pass  # No route parameter exists: /animals
-        except ValueError:
-            pass  # Request had trailing slash: /animals/
-
-        return (resource, id)  # This is a tuple
+            pk = int(path_params[2])
+        except (IndexError, ValueError):
+            pass
+        return (resource, pk)  # This is a tuple
     # This is a Docstring it should be at the beginning of all classes and functions
     # It gives a description of the class or function
     """Controls the functionality of any GET, PUT, POST, DELETE requests to the server
     """
+
+
 
     def do_GET(self):
         """Handles GET requests to the server """
@@ -110,7 +108,6 @@ class HandleRequests(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(new_order).encode())
 
     def do_PUT(self):
-        self._set_headers(204)
         content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
         post_body = json.loads(post_body)
@@ -118,21 +115,42 @@ class HandleRequests(BaseHTTPRequestHandler):
         # Parse the URL
         (resource, id) = self.parse_url(self.path)
 
-        # change a single metal from the list
+        success = False
+
         if resource == "metals":
-            update_metal(id, post_body)
+            success = update_metal(id, post_body)
 
-        if resource == "sizes":
-            update_size(id, post_body)
+        if success:
+            self._set_headers(204)
+        else:
+            self._set_headers(404)
 
-        if resource == "styles":
-            update_style(id, post_body)
-
-        if resource == "orders":
-            update_order(id, post_body)
-
-        # Encode the new animal and send in response
         self.wfile.write("".encode())
+
+    # def do_PUT(self):
+    #     self._set_headers(204)
+    #     content_len = int(self.headers.get('content-length', 0))
+    #     post_body = self.rfile.read(content_len)
+    #     post_body = json.loads(post_body)
+
+    #     # Parse the URL
+    #     (resource, id) = self.parse_url(self.path)
+
+    #     # change a single metal from the list
+    #     if resource == "metals":
+    #         update_metal(id, post_body)
+
+    #     if resource == "sizes":
+    #         update_size(id, post_body)
+
+    #     if resource == "styles":
+    #         update_style(id, post_body)
+
+    #     if resource == "orders":
+    #         update_order(id, post_body)
+
+    #     # Encode the new animal and send in response
+    #     self.wfile.write("".encode())
 
     def do_DELETE(self):
         # Set a 204 response code
